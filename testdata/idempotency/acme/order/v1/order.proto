@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package acme.order.v1;
+
+service OrderService {
+  rpc GetOrder(Empty) returns (Empty);
+  rpc ListOrders(Empty) returns (Empty);
+  rpc CreateOrder(KeyedRequest) returns (Empty);
+  rpc CancelOrder(Empty) returns (Empty);
+  rpc ShipOrder(OneofKeyRequest) returns (Empty);
+  rpc HoldOrder(OptionalKeyRequest) returns (Empty);
+  rpc TagOrder(RepeatedKeyRequest) returns (Empty);
+  rpc NoteOrder(BytesKeyRequest) returns (Empty);
+  rpc Getaway(Empty) returns (Empty);
+  rpc DetermineRoute(Empty) returns (Empty);
+  rpc RetryOrder(RequestIDRequest) returns (Empty);
+}
+
+message Empty {}
+
+message KeyedRequest {
+  string idempotency_key = 1;
+}
+
+message OneofKeyRequest {
+  oneof key {
+    string idempotency_key = 1;
+  }
+}
+
+message OptionalKeyRequest {
+  optional string idempotency_key = 1;
+}
+
+message RepeatedKeyRequest {
+  repeated string idempotency_key = 1;
+}
+
+message BytesKeyRequest {
+  bytes idempotency_key = 1;
+}
+
+message RequestIDRequest {
+  string request_id = 1;
+}

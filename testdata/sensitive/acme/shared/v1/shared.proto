@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package acme.shared.v1;
+
+message Note {
+  string text = 1;
+}
