@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -33,6 +32,7 @@ var sensitiveRule = &check.RuleSpec{
 
 type sensitiveConfig struct {
 	ext              protoreflect.ExtensionType
+	unmarshal        proto.UnmarshalOptions
 	rootSuffixes     []string
 	rootPackages     []string
 	allowedExternals []string
@@ -129,6 +129,11 @@ func readSensitiveConfig(opts option.Options, files *protoregistry.Files) (*sens
 		return nil, fmt.Errorf("%s %q is not a bool extension of google.protobuf.FieldOptions", sensitiveOptionKey, name)
 	}
 	cfg := &sensitiveConfig{ext: dynamicpb.NewExtensionType(xd)}
+	types := new(protoregistry.Types)
+	if err := types.RegisterExtension(cfg.ext); err != nil {
+		return nil, err
+	}
+	cfg.unmarshal = proto.UnmarshalOptions{Resolver: types}
 	if cfg.rootSuffixes, err = option.GetStringSliceValue(opts, sensitiveRootSuffixesKey); err != nil {
 		return nil, err
 	}
@@ -210,19 +215,12 @@ func (s *sensitiveWalker) isMarked(f protoreflect.FieldDescriptor) (bool, error)
 
 func (s *sensitiveWalker) readMark(f protoreflect.FieldDescriptor) (bool, error) {
 	opts := f.Options()
-	if opts == nil {
-		return false, errors.New("field has no options message")
-	}
 	b, err := proto.Marshal(opts)
 	if err != nil {
 		return false, err
 	}
-	types := new(protoregistry.Types)
-	if err := types.RegisterExtension(s.cfg.ext); err != nil {
-		return false, err
-	}
 	m := opts.ProtoReflect().New().Interface()
-	if err := (proto.UnmarshalOptions{Resolver: types}).Unmarshal(b, m); err != nil {
+	if err := s.cfg.unmarshal.Unmarshal(b, m); err != nil {
 		return false, err
 	}
 	return m.ProtoReflect().Get(s.cfg.ext.TypeDescriptor()).Bool(), nil
