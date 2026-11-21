@@ -1,6 +1,6 @@
-// Command buf-plugin-proto-guard is a Buf check plugin with lint rules that keep
-// sensitive fields out of chosen messages and RPCs, and require idempotency keys
-// on state-changing RPCs.
+// Command buf-plugin-sensitive-guard is a Buf check plugin that keeps sensitive
+// fields out of chosen messages and RPCs. It also has a rule that requires
+// idempotency keys on state-changing RPCs.
 package main
 
 import (
@@ -16,7 +16,7 @@ var spec = &check.Spec{
 	Info: &info.Spec{
 		Documentation: "Lint rules that keep sensitive fields out of chosen messages and RPCs, and require idempotency keys on state-changing RPCs.",
 		SPDXLicenseID: "apache-2.0",
-		LicenseURL:    "https://github.com/sasaron/buf-plugin-proto-guard/blob/main/LICENSE",
+		LicenseURL:    "https://github.com/sasaron/buf-plugin-sensitive-guard/blob/main/LICENSE",
 	},
 }
 

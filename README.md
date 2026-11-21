@@ -1,16 +1,16 @@
-# buf-plugin-proto-guard
+# buf-plugin-sensitive-guard
 
-A [Buf](https://buf.build) check plugin with two lint rules:
+A [Buf](https://buf.build) check plugin that keeps sensitive fields out of chosen messages and RPCs.
 
-- `SENSITIVE_FIELD_UNREACHABLE` keeps fields marked with your own field option (for example `(acme.option.v1.sensitive) = true`) out of chosen messages and RPCs, following message fields recursively.
-- `IDEMPOTENCY_KEY_REQUIRED` requires a string idempotency key on every RPC whose name does not start with a read verb.
+- `SENSITIVE_FIELD_UNREACHABLE` follows message fields recursively from the roots you choose and reports every path to a field marked with your own field option (for example `(acme.option.v1.sensitive) = true`).
+- `IDEMPOTENCY_KEY_REQUIRED` is a second, unrelated rule shipped in the same binary: it requires a string idempotency key on every RPC whose name does not start with a read verb.
 
 Tested with Buf CLI v1.75.0 and bufplugin-go v0.11.1.
 
 ## Install
 
 ```sh
-go install github.com/sasaron/buf-plugin-proto-guard@latest
+go install github.com/sasaron/buf-plugin-sensitive-guard@latest
 ```
 
 The binary must be on `$PATH` or referenced by path in `buf.yaml`.
@@ -27,7 +27,7 @@ lint:
     - SENSITIVE_FIELD_UNREACHABLE
     - IDEMPOTENCY_KEY_REQUIRED
 plugins:
-  - plugin: buf-plugin-proto-guard
+  - plugin: buf-plugin-sensitive-guard
     options:
       sensitive_option: acme.option.v1.sensitive
       sensitive_root_message_suffixes: [JobPayload]

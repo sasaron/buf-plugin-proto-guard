@@ -1,4 +1,4 @@
-module github.com/sasaron/buf-plugin-proto-guard
+module github.com/sasaron/buf-plugin-sensitive-guard
 
 go 1.26.0
 
