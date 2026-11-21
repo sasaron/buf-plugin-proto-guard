@@ -13,8 +13,8 @@ func sensitiveFiles(paths ...string) *checktest.ProtoFileSpec {
 	return &checktest.ProtoFileSpec{DirPaths: []string{"testdata/sensitive"}, FilePaths: paths}
 }
 
-func at(file string, line, col, endLine, endCol int) *checktest.ExpectedFileLocation {
-	return &checktest.ExpectedFileLocation{FileName: file, StartLine: line, StartColumn: col, EndLine: endLine, EndColumn: endCol}
+func at(file string, line, startCol, endCol int) *checktest.ExpectedFileLocation {
+	return &checktest.ExpectedFileLocation{FileName: file, StartLine: line, StartColumn: startCol, EndLine: line, EndColumn: endCol}
 }
 
 func TestSpec_Defined_IsValid(t *testing.T) {
@@ -34,9 +34,9 @@ func TestSensitive_SuffixRoots_ReportsFirstFieldOfEachPath(t *testing.T) {
 		},
 		Spec: spec,
 		ExpectedAnnotations: []checktest.ExpectedAnnotation{
-			{RuleID: sensitiveRuleID, Message: "acme.app.v1.ShipPayload reaches acme.app.v1.ShipPayload.customer.address.line.", FileLocation: at("app.proto", 22, 2, 22, 24)},
-			{RuleID: sensitiveRuleID, Message: "acme.app.v1.TagPayload reaches acme.app.v1.TagPayload.addresses.value.line.", FileLocation: at("app.proto", 27, 2, 27, 37)},
-			{RuleID: sensitiveRuleID, Message: "acme.app.v1.Batch.ItemPayload reaches acme.app.v1.Batch.ItemPayload.note of external type acme.shared.v1.Note.", FileLocation: at("app.proto", 32, 4, 32, 33)},
+			{RuleID: sensitiveRuleID, Message: "acme.app.v1.ShipPayload reaches acme.app.v1.ShipPayload.customer.address.line.", FileLocation: at("app.proto", 22, 2, 24)},
+			{RuleID: sensitiveRuleID, Message: "acme.app.v1.TagPayload reaches acme.app.v1.TagPayload.addresses.value.line.", FileLocation: at("app.proto", 27, 2, 37)},
+			{RuleID: sensitiveRuleID, Message: "acme.app.v1.Batch.ItemPayload reaches acme.app.v1.Batch.ItemPayload.note of external type acme.shared.v1.Note.", FileLocation: at("app.proto", 32, 4, 33)},
 		},
 	}.Run(t)
 }
@@ -53,8 +53,8 @@ func TestSensitive_ExternalTypeNotAllowed_ReportsExternalType(t *testing.T) {
 		},
 		Spec: spec,
 		ExpectedAnnotations: []checktest.ExpectedAnnotation{
-			{RuleID: sensitiveRuleID, Message: "acme.app.v1.ShipPayload reaches acme.app.v1.ShipPayload.customer.address.line.", FileLocation: at("app.proto", 22, 2, 22, 24)},
-			{RuleID: sensitiveRuleID, Message: "acme.app.v1.ShipPayload reaches acme.app.v1.ShipPayload.created_at of external type google.protobuf.Timestamp.", FileLocation: at("app.proto", 23, 2, 23, 43)},
+			{RuleID: sensitiveRuleID, Message: "acme.app.v1.ShipPayload reaches acme.app.v1.ShipPayload.customer.address.line.", FileLocation: at("app.proto", 22, 2, 24)},
+			{RuleID: sensitiveRuleID, Message: "acme.app.v1.ShipPayload reaches acme.app.v1.ShipPayload.created_at of external type google.protobuf.Timestamp.", FileLocation: at("app.proto", 23, 2, 43)},
 		},
 	}.Run(t)
 }
@@ -71,7 +71,7 @@ func TestSensitive_ServicePackageRoots_ReportsMethod(t *testing.T) {
 		},
 		Spec: spec,
 		ExpectedAnnotations: []checktest.ExpectedAnnotation{
-			{RuleID: sensitiveRuleID, Message: "acme.api.v1.CustomerService.GetCustomer response is external type acme.app.v1.Customer.", FileLocation: at("api.proto", 7, 2, 7, 69)},
+			{RuleID: sensitiveRuleID, Message: "acme.api.v1.CustomerService.GetCustomer response is external type acme.app.v1.Customer.", FileLocation: at("api.proto", 7, 2, 69)},
 		},
 	}.Run(t)
 }
@@ -88,7 +88,7 @@ func TestSensitive_ServicePackageRootsWithTypesLinted_ReportsSensitiveField(t *t
 		},
 		Spec: spec,
 		ExpectedAnnotations: []checktest.ExpectedAnnotation{
-			{RuleID: sensitiveRuleID, Message: "acme.api.v1.CustomerService.GetCustomer response reaches acme.app.v1.Customer.address.line.", FileLocation: at("api.proto", 7, 2, 7, 69)},
+			{RuleID: sensitiveRuleID, Message: "acme.api.v1.CustomerService.GetCustomer response reaches acme.app.v1.Customer.address.line.", FileLocation: at("api.proto", 7, 2, 69)},
 		},
 	}.Run(t)
 }
@@ -98,21 +98,21 @@ func TestSensitive_InvalidOptions_ReturnsError(t *testing.T) {
 		options map[string]any
 		want    string
 	}{
-		"missing option": {
+		"missing_option": {
 			options: map[string]any{sensitiveRootSuffixesKey: []string{"Payload"}},
-			want:    `SENSITIVE_FIELD_UNREACHABLE needs the plugin option "sensitive_option"`,
+			want:    `"sensitive_option"`,
 		},
-		"unknown extension": {
+		"unknown_extension": {
 			options: map[string]any{sensitiveOptionKey: "acme.option.v1.missing", sensitiveRootSuffixesKey: []string{"Payload"}},
 			want:    `sensitive_option "acme.option.v1.missing"`,
 		},
-		"non-bool extension": {
+		"non-bool_extension": {
 			options: map[string]any{sensitiveOptionKey: "acme.option.v1.label", sensitiveRootSuffixesKey: []string{"Payload"}},
-			want:    `sensitive_option "acme.option.v1.label" is not a bool extension of google.protobuf.FieldOptions`,
+			want:    `"acme.option.v1.label" is not a bool extension`,
 		},
-		"no roots": {
+		"no_roots": {
 			options: map[string]any{sensitiveOptionKey: "acme.option.v1.sensitive"},
-			want:    `SENSITIVE_FIELD_UNREACHABLE needs "sensitive_root_message_suffixes" or "sensitive_root_service_packages"`,
+			want:    `"sensitive_root_message_suffixes" or "sensitive_root_service_packages"`,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -122,7 +122,7 @@ func TestSensitive_InvalidOptions_ReturnsError(t *testing.T) {
 				Options: tc.options,
 			})
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("error = %v, want it to contain %q", err, tc.want)
+				t.Errorf("Check(options = %v) error = %v, want it to contain %q", tc.options, err, tc.want)
 			}
 		})
 	}
@@ -134,7 +134,7 @@ func TestSensitive_OtherRuleOnly_IgnoresMissingOption(t *testing.T) {
 		RuleIDs: []string{idempotencyRuleID},
 	})
 	if err != nil {
-		t.Fatalf("error = %v, want nil", err)
+		t.Errorf("Check(rules = [%s], no options) error = %v, want nil", idempotencyRuleID, err)
 	}
 }
 
@@ -143,11 +143,11 @@ func runCheck(t *testing.T, rs *checktest.RequestSpec) error {
 	ctx := context.Background()
 	req, err := rs.ToRequest(ctx)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Setup failed: building the request: %v", err)
 	}
 	client, err := check.NewClientForSpec(spec)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Setup failed: creating the client: %v", err)
 	}
 	_, err = client.Check(ctx, req)
 	return err

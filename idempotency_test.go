@@ -10,34 +10,24 @@ func orderFiles() *checktest.ProtoFileSpec {
 	return &checktest.ProtoFileSpec{DirPaths: []string{"testdata/idempotency"}, FilePaths: []string{"order.proto"}}
 }
 
-func missingKey(method, input string, verbs, key string, line, endCol int) checktest.ExpectedAnnotation {
-	return checktest.ExpectedAnnotation{
-		RuleID:       idempotencyRuleID,
-		Message:      "acme.order.v1.OrderService." + method + " does not start with a read verb " + verbs + ", so acme.order.v1." + input + " needs a singular string field \"" + key + "\" outside any oneof.",
-		FileLocation: at("order.proto", line, 2, line, endCol),
-	}
-}
-
 func TestIdempotency_DefaultOptions_ReportsMethodsWithoutKey(t *testing.T) {
-	const verbs = "[Get List]"
 	checktest.CheckTest{
 		Request: &checktest.RequestSpec{Files: orderFiles(), RuleIDs: []string{idempotencyRuleID}},
 		Spec:    spec,
 		ExpectedAnnotations: []checktest.ExpectedAnnotation{
-			missingKey("CancelOrder", "Empty", verbs, "idempotency_key", 8, 41),
-			missingKey("ShipOrder", "OneofKeyRequest", verbs, "idempotency_key", 9, 49),
-			missingKey("HoldOrder", "OptionalKeyRequest", verbs, "idempotency_key", 10, 52),
-			missingKey("TagOrder", "RepeatedKeyRequest", verbs, "idempotency_key", 11, 51),
-			missingKey("NoteOrder", "BytesKeyRequest", verbs, "idempotency_key", 12, 49),
-			missingKey("Getaway", "Empty", verbs, "idempotency_key", 13, 37),
-			missingKey("DetermineRoute", "Empty", verbs, "idempotency_key", 14, 44),
-			missingKey("RetryOrder", "RequestIDRequest", verbs, "idempotency_key", 15, 51),
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.CancelOrder does not start with a read verb [Get List], so acme.order.v1.Empty needs a singular string field "idempotency_key" outside any oneof.`, FileLocation: at("order.proto", 8, 2, 41)},
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.ShipOrder does not start with a read verb [Get List], so acme.order.v1.OneofKeyRequest needs a singular string field "idempotency_key" outside any oneof.`, FileLocation: at("order.proto", 9, 2, 49)},
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.HoldOrder does not start with a read verb [Get List], so acme.order.v1.OptionalKeyRequest needs a singular string field "idempotency_key" outside any oneof.`, FileLocation: at("order.proto", 10, 2, 52)},
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.TagOrder does not start with a read verb [Get List], so acme.order.v1.RepeatedKeyRequest needs a singular string field "idempotency_key" outside any oneof.`, FileLocation: at("order.proto", 11, 2, 51)},
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.NoteOrder does not start with a read verb [Get List], so acme.order.v1.BytesKeyRequest needs a singular string field "idempotency_key" outside any oneof.`, FileLocation: at("order.proto", 12, 2, 49)},
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.Getaway does not start with a read verb [Get List], so acme.order.v1.Empty needs a singular string field "idempotency_key" outside any oneof.`, FileLocation: at("order.proto", 13, 2, 37)},
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.DetermineRoute does not start with a read verb [Get List], so acme.order.v1.Empty needs a singular string field "idempotency_key" outside any oneof.`, FileLocation: at("order.proto", 14, 2, 44)},
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.RetryOrder does not start with a read verb [Get List], so acme.order.v1.RequestIDRequest needs a singular string field "idempotency_key" outside any oneof.`, FileLocation: at("order.proto", 15, 2, 51)},
 		},
 	}.Run(t)
 }
 
 func TestIdempotency_CustomVerbsAndKey_ReportsAgainstThem(t *testing.T) {
-	const verbs = "[Get List Determine]"
 	checktest.CheckTest{
 		Request: &checktest.RequestSpec{
 			Files:   orderFiles(),
@@ -49,13 +39,13 @@ func TestIdempotency_CustomVerbsAndKey_ReportsAgainstThem(t *testing.T) {
 		},
 		Spec: spec,
 		ExpectedAnnotations: []checktest.ExpectedAnnotation{
-			missingKey("CreateOrder", "KeyedRequest", verbs, "request_id", 7, 48),
-			missingKey("CancelOrder", "Empty", verbs, "request_id", 8, 41),
-			missingKey("ShipOrder", "OneofKeyRequest", verbs, "request_id", 9, 49),
-			missingKey("HoldOrder", "OptionalKeyRequest", verbs, "request_id", 10, 52),
-			missingKey("TagOrder", "RepeatedKeyRequest", verbs, "request_id", 11, 51),
-			missingKey("NoteOrder", "BytesKeyRequest", verbs, "request_id", 12, 49),
-			missingKey("Getaway", "Empty", verbs, "request_id", 13, 37),
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.CreateOrder does not start with a read verb [Get List Determine], so acme.order.v1.KeyedRequest needs a singular string field "request_id" outside any oneof.`, FileLocation: at("order.proto", 7, 2, 48)},
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.CancelOrder does not start with a read verb [Get List Determine], so acme.order.v1.Empty needs a singular string field "request_id" outside any oneof.`, FileLocation: at("order.proto", 8, 2, 41)},
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.ShipOrder does not start with a read verb [Get List Determine], so acme.order.v1.OneofKeyRequest needs a singular string field "request_id" outside any oneof.`, FileLocation: at("order.proto", 9, 2, 49)},
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.HoldOrder does not start with a read verb [Get List Determine], so acme.order.v1.OptionalKeyRequest needs a singular string field "request_id" outside any oneof.`, FileLocation: at("order.proto", 10, 2, 52)},
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.TagOrder does not start with a read verb [Get List Determine], so acme.order.v1.RepeatedKeyRequest needs a singular string field "request_id" outside any oneof.`, FileLocation: at("order.proto", 11, 2, 51)},
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.NoteOrder does not start with a read verb [Get List Determine], so acme.order.v1.BytesKeyRequest needs a singular string field "request_id" outside any oneof.`, FileLocation: at("order.proto", 12, 2, 49)},
+			{RuleID: idempotencyRuleID, Message: `acme.order.v1.OrderService.Getaway does not start with a read verb [Get List Determine], so acme.order.v1.Empty needs a singular string field "request_id" outside any oneof.`, FileLocation: at("order.proto", 13, 2, 37)},
 		},
 	}.Run(t)
 }
