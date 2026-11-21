@@ -7,14 +7,14 @@ import (
 )
 
 func orderFiles() *checktest.ProtoFileSpec {
-	return &checktest.ProtoFileSpec{DirPaths: []string{"testdata/idempotency"}, FilePaths: []string{"acme/order/v1/order.proto"}}
+	return &checktest.ProtoFileSpec{DirPaths: []string{"testdata/idempotency"}, FilePaths: []string{"order.proto"}}
 }
 
 func missingKey(method, input string, verbs, key string, line, endCol int) checktest.ExpectedAnnotation {
 	return checktest.ExpectedAnnotation{
 		RuleID:       idempotencyRuleID,
 		Message:      "acme.order.v1.OrderService." + method + " does not start with a read verb " + verbs + ", so acme.order.v1." + input + " needs a singular string field \"" + key + "\" outside any oneof.",
-		FileLocation: at("acme/order/v1/order.proto", line, 2, line, endCol),
+		FileLocation: at("order.proto", line, 2, line, endCol),
 	}
 }
 

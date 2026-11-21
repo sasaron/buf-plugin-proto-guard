@@ -24,7 +24,7 @@ func TestSpec_Defined_IsValid(t *testing.T) {
 func TestSensitive_SuffixRoots_ReportsFirstFieldOfEachPath(t *testing.T) {
 	checktest.CheckTest{
 		Request: &checktest.RequestSpec{
-			Files:   sensitiveFiles("acme/app/v1/app.proto"),
+			Files:   sensitiveFiles("app.proto"),
 			RuleIDs: []string{sensitiveRuleID},
 			Options: map[string]any{
 				sensitiveOptionKey:          "acme.option.v1.sensitive",
@@ -34,9 +34,9 @@ func TestSensitive_SuffixRoots_ReportsFirstFieldOfEachPath(t *testing.T) {
 		},
 		Spec: spec,
 		ExpectedAnnotations: []checktest.ExpectedAnnotation{
-			{RuleID: sensitiveRuleID, Message: "acme.app.v1.ShipPayload reaches acme.app.v1.ShipPayload.customer.address.line.", FileLocation: at("acme/app/v1/app.proto", 22, 2, 22, 24)},
-			{RuleID: sensitiveRuleID, Message: "acme.app.v1.TagPayload reaches acme.app.v1.TagPayload.addresses.value.line.", FileLocation: at("acme/app/v1/app.proto", 27, 2, 27, 37)},
-			{RuleID: sensitiveRuleID, Message: "acme.app.v1.Batch.ItemPayload reaches acme.app.v1.Batch.ItemPayload.note of external type acme.shared.v1.Note.", FileLocation: at("acme/app/v1/app.proto", 32, 4, 32, 33)},
+			{RuleID: sensitiveRuleID, Message: "acme.app.v1.ShipPayload reaches acme.app.v1.ShipPayload.customer.address.line.", FileLocation: at("app.proto", 22, 2, 22, 24)},
+			{RuleID: sensitiveRuleID, Message: "acme.app.v1.TagPayload reaches acme.app.v1.TagPayload.addresses.value.line.", FileLocation: at("app.proto", 27, 2, 27, 37)},
+			{RuleID: sensitiveRuleID, Message: "acme.app.v1.Batch.ItemPayload reaches acme.app.v1.Batch.ItemPayload.note of external type acme.shared.v1.Note.", FileLocation: at("app.proto", 32, 4, 32, 33)},
 		},
 	}.Run(t)
 }
@@ -44,7 +44,7 @@ func TestSensitive_SuffixRoots_ReportsFirstFieldOfEachPath(t *testing.T) {
 func TestSensitive_ExternalTypeNotAllowed_ReportsExternalType(t *testing.T) {
 	checktest.CheckTest{
 		Request: &checktest.RequestSpec{
-			Files:   sensitiveFiles("acme/app/v1/app.proto"),
+			Files:   sensitiveFiles("app.proto"),
 			RuleIDs: []string{sensitiveRuleID},
 			Options: map[string]any{
 				sensitiveOptionKey:       "acme.option.v1.sensitive",
@@ -53,8 +53,8 @@ func TestSensitive_ExternalTypeNotAllowed_ReportsExternalType(t *testing.T) {
 		},
 		Spec: spec,
 		ExpectedAnnotations: []checktest.ExpectedAnnotation{
-			{RuleID: sensitiveRuleID, Message: "acme.app.v1.ShipPayload reaches acme.app.v1.ShipPayload.customer.address.line.", FileLocation: at("acme/app/v1/app.proto", 22, 2, 22, 24)},
-			{RuleID: sensitiveRuleID, Message: "acme.app.v1.ShipPayload reaches acme.app.v1.ShipPayload.created_at of external type google.protobuf.Timestamp.", FileLocation: at("acme/app/v1/app.proto", 23, 2, 23, 43)},
+			{RuleID: sensitiveRuleID, Message: "acme.app.v1.ShipPayload reaches acme.app.v1.ShipPayload.customer.address.line.", FileLocation: at("app.proto", 22, 2, 22, 24)},
+			{RuleID: sensitiveRuleID, Message: "acme.app.v1.ShipPayload reaches acme.app.v1.ShipPayload.created_at of external type google.protobuf.Timestamp.", FileLocation: at("app.proto", 23, 2, 23, 43)},
 		},
 	}.Run(t)
 }
@@ -62,7 +62,7 @@ func TestSensitive_ExternalTypeNotAllowed_ReportsExternalType(t *testing.T) {
 func TestSensitive_ServicePackageRoots_ReportsMethod(t *testing.T) {
 	checktest.CheckTest{
 		Request: &checktest.RequestSpec{
-			Files:   sensitiveFiles("acme/api/v1/api.proto"),
+			Files:   sensitiveFiles("api.proto"),
 			RuleIDs: []string{sensitiveRuleID},
 			Options: map[string]any{
 				sensitiveOptionKey:       "acme.option.v1.sensitive",
@@ -71,7 +71,7 @@ func TestSensitive_ServicePackageRoots_ReportsMethod(t *testing.T) {
 		},
 		Spec: spec,
 		ExpectedAnnotations: []checktest.ExpectedAnnotation{
-			{RuleID: sensitiveRuleID, Message: "acme.api.v1.CustomerService.GetCustomer response is external type acme.app.v1.Customer.", FileLocation: at("acme/api/v1/api.proto", 7, 2, 7, 69)},
+			{RuleID: sensitiveRuleID, Message: "acme.api.v1.CustomerService.GetCustomer response is external type acme.app.v1.Customer.", FileLocation: at("api.proto", 7, 2, 7, 69)},
 		},
 	}.Run(t)
 }
@@ -79,7 +79,7 @@ func TestSensitive_ServicePackageRoots_ReportsMethod(t *testing.T) {
 func TestSensitive_ServicePackageRootsWithTypesLinted_ReportsSensitiveField(t *testing.T) {
 	checktest.CheckTest{
 		Request: &checktest.RequestSpec{
-			Files:   sensitiveFiles("acme/api/v1/api.proto", "acme/app/v1/app.proto"),
+			Files:   sensitiveFiles("api.proto", "app.proto"),
 			RuleIDs: []string{sensitiveRuleID},
 			Options: map[string]any{
 				sensitiveOptionKey:       "acme.option.v1.sensitive",
@@ -88,7 +88,7 @@ func TestSensitive_ServicePackageRootsWithTypesLinted_ReportsSensitiveField(t *t
 		},
 		Spec: spec,
 		ExpectedAnnotations: []checktest.ExpectedAnnotation{
-			{RuleID: sensitiveRuleID, Message: "acme.api.v1.CustomerService.GetCustomer response reaches acme.app.v1.Customer.address.line.", FileLocation: at("acme/api/v1/api.proto", 7, 2, 7, 69)},
+			{RuleID: sensitiveRuleID, Message: "acme.api.v1.CustomerService.GetCustomer response reaches acme.app.v1.Customer.address.line.", FileLocation: at("api.proto", 7, 2, 7, 69)},
 		},
 	}.Run(t)
 }
@@ -117,7 +117,7 @@ func TestSensitive_InvalidOptions_ReturnsError(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			err := runCheck(t, &checktest.RequestSpec{
-				Files:   sensitiveFiles("acme/app/v1/app.proto"),
+				Files:   sensitiveFiles("app.proto"),
 				RuleIDs: []string{sensitiveRuleID},
 				Options: tc.options,
 			})
@@ -130,7 +130,7 @@ func TestSensitive_InvalidOptions_ReturnsError(t *testing.T) {
 
 func TestSensitive_OtherRuleOnly_IgnoresMissingOption(t *testing.T) {
 	err := runCheck(t, &checktest.RequestSpec{
-		Files:   sensitiveFiles("acme/app/v1/app.proto"),
+		Files:   sensitiveFiles("app.proto"),
 		RuleIDs: []string{idempotencyRuleID},
 	})
 	if err != nil {
