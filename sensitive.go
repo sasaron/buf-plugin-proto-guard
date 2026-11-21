@@ -40,46 +40,31 @@ type sensitiveConfig struct {
 
 func checkSensitive(_ context.Context, w check.ResponseWriter, req check.Request) error {
 	files := new(protoregistry.Files)
+	imports := map[string]bool{}
 	for _, f := range req.FileDescriptors() {
-		if err := files.RegisterFile(f.ProtoreflectFileDescriptor()); err != nil {
-			return err
+		fd := f.ProtoreflectFileDescriptor()
+		if err := files.RegisterFile(fd); err != nil {
+			return fmt.Errorf("%s: %w", sensitiveRuleID, err)
+		}
+		if f.IsImport() {
+			imports[fd.Path()] = true
 		}
 	}
 	cfg, err := readSensitiveConfig(req.Options(), files)
 	if err != nil {
 		return err
 	}
-	imports := map[string]bool{}
-	for _, f := range req.FileDescriptors() {
-		if f.IsImport() {
-			imports[f.ProtoreflectFileDescriptor().Path()] = true
-		}
-	}
-	s := &sensitiveWalker{cfg: cfg, imports: imports, marked: map[protoreflect.FullName]bool{}}
+	walker := &sensitiveWalker{cfg: cfg, imports: imports, marked: map[protoreflect.FullName]bool{}}
 	for _, f := range req.FileDescriptors() {
 		if f.IsImport() {
 			continue
 		}
 		fd := f.ProtoreflectFileDescriptor()
-		var rootErr error
-		eachMessage(fd.Messages(), func(m protoreflect.MessageDescriptor) {
-			if rootErr != nil || !hasAnySuffix(string(m.Name()), cfg.rootSuffixes) {
-				return
-			}
-			fields := m.Fields()
-			for i := range fields.Len() {
-				first := fields.Get(i)
-				err := s.field(first, string(m.FullName()), map[protoreflect.FullName]bool{m.FullName(): true}, func(path string) {
-					w.AddAnnotation(check.WithMessagef("%s reaches %s.", m.FullName(), path), check.WithDescriptor(first))
-				})
-				if err != nil {
-					rootErr = err
-					return
-				}
-			}
+		err := eachMessage(fd.Messages(), func(m protoreflect.MessageDescriptor) error {
+			return walker.checkRootMessage(w, m)
 		})
-		if rootErr != nil {
-			return rootErr
+		if err != nil {
+			return err
 		}
 		if !slices.Contains(cfg.rootPackages, string(fd.Package())) {
 			continue
@@ -88,23 +73,8 @@ func checkSensitive(_ context.Context, w check.ResponseWriter, req check.Request
 		for i := range services.Len() {
 			methods := services.Get(i).Methods()
 			for j := range methods.Len() {
-				method := methods.Get(j)
-				for _, side := range []struct {
-					name string
-					msg  protoreflect.MessageDescriptor
-				}{{"request", method.Input()}, {"response", method.Output()}} {
-					if s.isExternal(side.msg) {
-						if !s.isAllowed(side.msg) {
-							w.AddAnnotation(check.WithMessagef("%s %s is external type %s.", method.FullName(), side.name, side.msg.FullName()), check.WithDescriptor(method))
-						}
-						continue
-					}
-					report := func(path string) {
-						w.AddAnnotation(check.WithMessagef("%s %s reaches %s.", method.FullName(), side.name, path), check.WithDescriptor(method))
-					}
-					if err := s.message(side.msg, string(side.msg.FullName()), map[protoreflect.FullName]bool{}, report); err != nil {
-						return err
-					}
+				if err := walker.checkRootMethod(w, methods.Get(j)); err != nil {
+					return err
 				}
 			}
 		}
@@ -155,6 +125,44 @@ type sensitiveWalker struct {
 	marked  map[protoreflect.FullName]bool
 }
 
+func (s *sensitiveWalker) checkRootMessage(w check.ResponseWriter, m protoreflect.MessageDescriptor) error {
+	if !hasAnySuffix(string(m.Name()), s.cfg.rootSuffixes) {
+		return nil
+	}
+	fields := m.Fields()
+	for i := range fields.Len() {
+		first := fields.Get(i)
+		report := func(path string) {
+			w.AddAnnotation(check.WithMessagef("%s reaches %s.", m.FullName(), path), check.WithDescriptor(first))
+		}
+		if err := s.field(first, string(m.FullName()), map[protoreflect.FullName]bool{m.FullName(): true}, report); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *sensitiveWalker) checkRootMethod(w check.ResponseWriter, method protoreflect.MethodDescriptor) error {
+	for _, side := range []struct {
+		name string
+		msg  protoreflect.MessageDescriptor
+	}{{"request", method.Input()}, {"response", method.Output()}} {
+		if s.isExternal(side.msg) {
+			if !s.isAllowed(side.msg) {
+				w.AddAnnotation(check.WithMessagef("%s %s is external type %s.", method.FullName(), side.name, side.msg.FullName()), check.WithDescriptor(method))
+			}
+			continue
+		}
+		report := func(path string) {
+			w.AddAnnotation(check.WithMessagef("%s %s reaches %s.", method.FullName(), side.name, path), check.WithDescriptor(method))
+		}
+		if err := s.message(side.msg, string(side.msg.FullName()), map[protoreflect.FullName]bool{}, report); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *sensitiveWalker) message(m protoreflect.MessageDescriptor, path string, onPath map[protoreflect.FullName]bool, report func(string)) error {
 	if onPath[m.FullName()] {
 		return nil
@@ -170,6 +178,10 @@ func (s *sensitiveWalker) message(m protoreflect.MessageDescriptor, path string,
 	return nil
 }
 
+// field calls report with the path of each sensitive field or disallowed
+// external type reachable through f. path is the dotted path to the message
+// holding f, and onPath holds the messages on that path, which are not entered
+// again.
 func (s *sensitiveWalker) field(f protoreflect.FieldDescriptor, path string, onPath map[protoreflect.FullName]bool, report func(string)) error {
 	at := path + "." + string(f.Name())
 	marked, err := s.isMarked(f)
@@ -226,15 +238,20 @@ func (s *sensitiveWalker) readMark(f protoreflect.FieldDescriptor) (bool, error)
 	return m.ProtoReflect().Get(s.cfg.ext.TypeDescriptor()).Bool(), nil
 }
 
-func eachMessage(ms protoreflect.MessageDescriptors, fn func(protoreflect.MessageDescriptor)) {
+func eachMessage(ms protoreflect.MessageDescriptors, fn func(protoreflect.MessageDescriptor) error) error {
 	for i := range ms.Len() {
 		m := ms.Get(i)
 		if m.IsMapEntry() {
 			continue
 		}
-		fn(m)
-		eachMessage(m.Messages(), fn)
+		if err := fn(m); err != nil {
+			return err
+		}
+		if err := eachMessage(m.Messages(), fn); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func hasAnySuffix(name string, suffixes []string) bool {
